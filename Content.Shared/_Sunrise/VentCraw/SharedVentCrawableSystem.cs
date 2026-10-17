@@ -169,7 +169,8 @@ public abstract partial class SharedVentCrawableSystem : EntitySystem
             return false;
 
         return HasComp<ItemComponent>(toInsert) ||
-            HasComp<BodyComponent>(toInsert);
+            HasComp<BodyComponent>(toInsert) ||
+            HasComp<VentCrawlerComponent>(toInsert); // Lust edit - пускаем ползунов без тела (свармеры)
     }
 
     /// <summary>

@@ -1,0 +1,8 @@
+# Канал роя: его слышат и используют только свармеры.
+- type: radioChannel
+  id: Swarmer
+  name: chat-radio-swarmer
+  keycode: 'ш'
+  frequency: 1337
+  color: "#00c8c8"
+  longRange: true
