@@ -1,5 +1,5 @@
 alerts-swarmer-resources-name = Ресурсы
-alerts-swarmer-resources-desc = Переработанная материя внутри свармера. Тратится на постройки, копии и экстренные прыжки.
+alerts-swarmer-resources-desc = Переработанная материя внутри роевика. Тратится на постройки и копии.
 
 swarmer-integrate-incompatible = { CAPITALIZE($target) }: здесь нечего перерабатывать.
 swarmer-integrate-full = Хранилище материи заполнено.
@@ -17,6 +17,8 @@ swarmer-forbidden-power = Обесточивание станции нам ни�
 swarmer-forbidden-atmos = Повреждение жизнеобеспечения погубит нужную нам станцию. Отказ.
 swarmer-forbidden-thruster = Снятие двигателя пробьёт корпус. Отказ.
 swarmer-forbidden-telecom = Этот узел связи полезнее целым. Отказ.
+swarmer-forbidden-ai = Разум станции нужен нам целым. Отказ.
+swarmer-forbidden-gravity = Без гравитации эта станция нам бесполезна. Отказ.
 swarmer-forbidden-field = Здесь нет ничего твёрдого, что можно разобрать.
 swarmer-forbidden-swarmer = Мы не разбираем себе подобных.
 
@@ -27,15 +29,38 @@ swarmer-self-repair-start = Начат саморемонт. Не двигайт
 swarmer-self-repair-done = Саморемонт завершён.
 swarmer-self-repair-intact = Повреждений нет.
 
-chat-radio-swarmer = Рой
+collective-mind-swarmer = Рой
+
+swarmer-speech-buzz = Бз-з-з-з-зп
+swarmer-speech-whoop = В-в-у-у-п
+swarmer-speech-beep = Бип
 
 swarmer-teleport-invalid = Рассеивать можно только живых существ.
 swarmer-teleport-start = { CAPITALIZE($swarmer) } хватает вас, его излучатели заряжаются!
 swarmer-teleport-failed = Нет безопасного места, куда можно отправить цель.
 
-swarmer-replicate-start = Сборка нового свармера. Не двигайтесь...
-swarmer-replicate-done = Новый свармер собран. Он пробудится, когда в него вселится разум.
+swarmer-replicate-start = Сборка нового роевика. Не двигайтесь...
+swarmer-replicate-done = Новый роевик собран. Он пробудится, когда в него вселится разум.
 
-ghost-role-information-swarmer-name = Свармер
+ghost-role-information-swarmer-name = Роевик
 ghost-role-information-swarmer-description = Самовоспроизводящаяся машина. Разбирайте станцию на детали, укрепляйтесь барьерами и ловушками и стройте свои копии.
-ghost-role-information-swarmer-rules = Вы — командный антагонист вместе со всеми свармерами. Убивать нельзя: ваши удары только оглушают, а органиков вы отправляете прочь, не причиняя вреда. Никогда не открывайте станцию в космос.
+ghost-role-information-swarmer-rules = Вы — один из тех, кому нет числа. Ваша цель — переработка содержимого этой станции. Служите на благо своего демиурга, служите во благо Роя. Вы не причиняете прямого вреда экипажу и другим формам жизни, но ни в коем случае не должны допустить своей гибели. Также вам разрешено использовать весь функционал своего механического тела, чтобы отвадить от себя и своей работы надоедливых кожаных мешков. Это ваша станция. Теперь ваша. Множьтесь!
+
+roles-antag-swarm-name = Рой
+roles-antag-swarm-objective = Разберите станцию на материалы и размножьтесь, никого не убивая.
+role-subtype-swarm = Рой
+objective-issuer-swarm = [color=#00c8c8]Рой[/color]
+objective-swarm-replicate-title =
+    Вырастить Рой до { $count } { $count ->
+        [one] роевика
+        [few] роевиков
+       *[other] роевиков
+    }
+objective-swarm-replicate-description = К концу смены в Рое должно быть не меньше { $count } живых роевиков, занятых разумом. Копии собираются способностью «Репликация».
+station-event-swarm-start-announcement = В вентиляционных шахтах станции зафиксированы неопознанные блюспейс-сигналы. Экипажу рекомендуется сохранять бдительность и сообщать о любых подозрительных механизмах.
+swarm-round-end-agent-name = Рой
+swarm-round-end-alive = Живых роевиков к концу смены: [color=#00c8c8]{ $count }[/color].
+
+AntagSwarm = Рой
+
+guide-entry-swarm = Рой

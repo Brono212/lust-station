@@ -16,24 +16,27 @@ public abstract partial class SharedSwarmerSystem
     [Dependency] private PowerCellSystem _powerCell = default!;
     [Dependency] private SharedStunSystem _stun = default!;
 
-    private void InitializeBorgs()
+    private void InitializeCombat()
     {
         SubscribeLocalEvent<SwarmerComponent, MeleeHitEvent>(OnMeleeHit);
         SubscribeLocalEvent<SwarmerTrapComponent, TriggerEvent>(OnTrapTriggered);
     }
 
     /// <summary>
-    /// Cyborgs ignore stamina damage, so swarmer hits drain their battery instead.
+    /// Every hit sparks on the target. Cyborgs ignore stamina damage, so swarmer hits drain their battery instead.
     /// </summary>
     private void OnMeleeHit(Entity<SwarmerComponent> ent, ref MeleeHitEvent args)
     {
-        if (!args.IsHit)
+        if (!args.IsHit || args.HitEntities.Count == 0)
             return;
 
         foreach (var target in args.HitEntities)
         {
+            PredictedSpawnAtPosition(ent.Comp.HitEffect, Transform(target).Coordinates);
             TryDrainBorg(target, ent.Comp.BorgDrainPerHit);
         }
+
+        OnSwarmerHit(ent);
     }
 
     private void OnTrapTriggered(Entity<SwarmerTrapComponent> ent, ref TriggerEvent args)

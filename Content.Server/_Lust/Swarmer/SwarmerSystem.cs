@@ -47,6 +47,7 @@ public sealed partial class SwarmerSystem : SharedSwarmerSystem
         InitializeGlow();
         InitializeReplicate();
         InitializeDormancy();
+        InitializeSpeech();
     }
 
     private void OnDisintegrateDoAfter(Entity<SwarmerComponent> ent, ref SwarmerDisintegrateDoAfterEvent args)
@@ -102,6 +103,7 @@ public sealed partial class SwarmerSystem : SharedSwarmerSystem
 
         Spawn(ent.Comp.DisintegrateEffect, TransformSystem.GetMapCoordinates(target));
         DropContents(target);
+        DropExtraLoot(ent, target);
 
         if (ShouldSalvage(ent, target))
             Salvage(ent, target);
@@ -319,6 +321,23 @@ public sealed partial class SwarmerSystem : SharedSwarmerSystem
         foreach (var material in materials)
         {
             _stack.SpawnAtPosition(1, material, coords);
+        }
+    }
+
+    /// <summary>
+    /// Spawns the extra loot configured for this kind of structure, e.g. steel from airlocks.
+    /// </summary>
+    private void DropExtraLoot(Entity<SwarmerComponent> ent, EntityUid target)
+    {
+        var coords = Transform(target).Coordinates;
+        foreach (var loot in ent.Comp.ExtraLoot)
+        {
+            if (!Whitelist.IsWhitelistPass(loot.Whitelist, target))
+                continue;
+
+            var spawned = SpawnAtPosition(loot.Spawn, coords);
+            if (TryComp<StackComponent>(spawned, out var stack))
+                _stack.SetCount((spawned, stack), loot.Amount);
         }
     }
 

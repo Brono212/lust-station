@@ -499,6 +499,8 @@ public sealed class SwarmerTest : GameTest
         await server.WaitPost(() =>
         {
             swarmer = entMan.SpawnAtPosition("MobSwarmer", new EntityCoordinates(testMap.Grid, 0.5f, 0.5f));
+            // Репликация стоит полный запас ресурсов.
+            entMan.GetComponent<SwarmerComponent>(swarmer).Resources = 100;
             entMan.EventBus.RaiseLocalEvent(swarmer, new SwarmerReplicateActionEvent());
         });
 
@@ -522,7 +524,7 @@ public sealed class SwarmerTest : GameTest
             var appearance = entMan.System<SharedAppearanceSystem>();
             Assert.Multiple(() =>
             {
-                Assert.That(entMan.GetComponent<SwarmerComponent>(swarmer).Resources, Is.EqualTo(0), "Replication costs 20");
+                Assert.That(entMan.GetComponent<SwarmerComponent>(swarmer).Resources, Is.EqualTo(0), "Replication costs 100");
                 Assert.That(entMan.GetComponent<MetaDataComponent>(replica).EntityPrototype?.ID, Is.EqualTo("MobSwarmer"));
                 Assert.That(entMan.GetComponent<SwarmerComponent>(replica).Resources, Is.EqualTo(0), "Replicas start empty");
                 Assert.That(entMan.HasComponent<Content.Server.NPC.HTN.HTNComponent>(replica), Is.False, "Replicas have no AI");
@@ -537,6 +539,51 @@ public sealed class SwarmerTest : GameTest
         await server.WaitAssertion(() =>
         {
             Assert.That(Swarmers(), Has.Count.EqualTo(2));
+        });
+    }
+
+    [Test]
+    public async Task SwarmerSpeaksOnlyInSounds()
+    {
+        var server = Pair.Server;
+        var testMap = await Pair.CreateTestMap();
+        var entMan = server.ResolveDependency<IEntityManager>();
+        var loc = server.ResolveDependency<Robust.Shared.Localization.ILocalizationManager>();
+
+        await server.WaitAssertion(() =>
+        {
+            var swarmer = entMan.SpawnAtPosition("MobSwarmer", new EntityCoordinates(testMap.Grid, 0.5f, 0.5f));
+            var phrases = new[] { "swarmer-speech-buzz", "swarmer-speech-whoop", "swarmer-speech-beep" }
+                .Select(id => loc.GetString(id))
+                .ToList();
+
+            Assert.Multiple(() =>
+            {
+                // Вслух любая фраза превращается в один из звуков, а связь роя идёт через коллективный разум.
+                var spoken = entMan.System<Content.Server.Chat.Systems.ChatSystem>().TransformSpeech(swarmer, "Отдайте нам станцию.");
+                Assert.That(phrases, Does.Contain(spoken));
+                Assert.That(entMan.GetComponent<Content.Shared._Sunrise.CollectiveMind.CollectiveMindComponent>(swarmer).Minds, Does.Contain("Swarmer"));
+                Assert.That(entMan.GetComponent<Content.Shared.Speech.SpeechComponent>(swarmer).SpeechSounds, Is.Null);
+            });
+        });
+    }
+
+    [Test]
+    public async Task SwarmerCanEnterVents()
+    {
+        var server = Pair.Server;
+        var testMap = await Pair.CreateTestMap();
+        var entMan = server.ResolveDependency<IEntityManager>();
+
+        await server.WaitAssertion(() =>
+        {
+            var coords = new EntityCoordinates(testMap.Grid, 0.5f, 0.5f);
+            var swarmer = entMan.SpawnAtPosition("MobSwarmer", coords);
+            var holder = entMan.SpawnAtPosition(Content.Shared._Sunrise.VentCraw.Components.VentCrawEntryComponent.HolderPrototypeId, coords);
+            var holderComp = entMan.GetComponent<Content.Shared._Sunrise.VentCraw.Components.VentCrawHolderComponent>(holder);
+
+            // Вентиляция пускает только существ с телом, поэтому у свармера пустое тело, как у боргов.
+            Assert.That(entMan.System<Content.Server._Sunrise.VentCraw.VentCrawTubeSystem>().TryInsert(holder, swarmer, holderComp));
         });
     }
 
@@ -584,7 +631,85 @@ public sealed class SwarmerTest : GameTest
         });
     }
 
+    [Test]
+    public async Task GlassShardsAreIntegrated()
+    {
+        var server = Pair.Server;
+        var testMap = await Pair.CreateTestMap();
+        var entMan = server.ResolveDependency<IEntityManager>();
+        EntityUid swarmer = default;
+        EntityUid shard = default;
+
+        await server.WaitPost(() =>
+        {
+            swarmer = entMan.SpawnAtPosition("MobSwarmer", testMap.GridCoords);
+            shard = entMan.SpawnAtPosition("ShardGlass", testMap.GridCoords);
+            entMan.System<SharedInteractionSystem>().InteractHand(swarmer, shard);
+        });
+
+        await server.WaitRunTicks(5);
+
+        await server.WaitAssertion(() =>
+        {
+            // У осколков нет состава материалов, они разрешены отдельным списком.
+            Assert.That(entMan.Deleted(shard), Is.True);
+            Assert.That(entMan.GetComponent<SwarmerComponent>(swarmer).Resources, Is.EqualTo(21));
+        });
+    }
+
+    [Test]
+    public async Task AirlockLeavesSteel()
+    {
+        var server = Pair.Server;
+        var testMap = await Pair.CreateTestMap();
+        var entMan = server.ResolveDependency<IEntityManager>();
+        EntityUid airlock = default;
+
+        await server.WaitPost(() =>
+        {
+            // Шлюз можно снести только без разгерметизации: вокруг нужен пол с воздухом.
+            var mapSys = entMan.System<SharedMapSystem>();
+            for (var x = -1; x <= 2; x++)
+            {
+                for (var y = -1; y <= 1; y++)
+                {
+                    mapSys.SetTile(testMap.Grid.Owner, testMap.Grid.Comp, new Vector2i(x, y), testMap.Tile.Tile);
+                }
+            }
+
+            server.ResolveDependency<Robust.Server.Console.IServerConsoleHost>()
+                .ExecuteCommand($"fixgridatmos {entMan.GetNetEntity(testMap.Grid.Owner)}");
+        });
+
+        await RunSeconds(1);
+
+        await server.WaitPost(() =>
+        {
+            airlock = entMan.SpawnAtPosition("Airlock", new EntityCoordinates(testMap.Grid, 0.5f, 0.5f));
+            var swarmer = entMan.SpawnAtPosition("MobSwarmer", new EntityCoordinates(testMap.Grid, 1.5f, 0.5f));
+            entMan.System<SharedInteractionSystem>().InteractHand(swarmer, airlock);
+        });
+
+        await RunSeconds(2);
+
+        await server.WaitAssertion(() =>
+        {
+            var steel = 0;
+            foreach (var uid in entMan.System<EntityLookupSystem>().GetEntitiesInRange(testMap.GridCoords, 2, LookupFlags.All | LookupFlags.Approximate))
+            {
+                if (entMan.GetComponent<MetaDataComponent>(uid).EntityPrototype?.ID == "SheetSteel1")
+                    steel += entMan.GetComponent<StackComponent>(uid).Count;
+            }
+
+            Assert.That(entMan.Deleted(airlock), Is.True);
+            Assert.That(steel, Is.GreaterThanOrEqualTo(5));
+        });
+    }
+
     [TestCase("NuclearBomb")]
+    [TestCase("NuclearBombKeg")]
+    [TestCase("GravityGenerator")]
+    [TestCase("GravityGeneratorMini")]
     [TestCase("APCBasic")]
     // На тестовой карте нет атмосферы: любая стена граничит с космосом, и её снос — разгерметизация.
     [TestCase("WallSolid")]

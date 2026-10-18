@@ -41,7 +41,7 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
         SubscribeLocalEvent<SwarmerComponent, BeforeInteractHandEvent>(OnBeforeInteractHand);
 
         InitializeAbilities();
-        InitializeBorgs();
+        InitializeCombat();
     }
 
     private void OnMapInit(Entity<SwarmerComponent> ent, ref MapInitEvent args)
@@ -141,12 +141,23 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
     }
 
     /// <summary>
-    /// Whether the item is made of a material swarmers can recycle and isn't blacklisted (guns).
+    /// Called after a swarmer lands a melee hit, for server-only reactions.
+    /// </summary>
+    protected virtual void OnSwarmerHit(Entity<SwarmerComponent> ent)
+    {
+    }
+
+    /// <summary>
+    /// Whether the item is made of a material swarmers can recycle (or is explicitly allowed) and isn't blacklisted (guns).
     /// </summary>
     private bool IsIntegrable(Entity<SwarmerComponent> ent, EntityUid target)
     {
         if (Whitelist.IsWhitelistPass(ent.Comp.IntegrateBlacklist, target))
             return false;
+
+        // Осколки и прочий мусор без состава материалов разрешены отдельным списком.
+        if (Whitelist.IsWhitelistPass(ent.Comp.IntegrateWhitelist, target))
+            return true;
 
         if (!TryComp<PhysicalCompositionComponent>(target, out var composition))
             return false;

@@ -86,7 +86,7 @@
   parent: BaseAction
   id: ActionSwarmerReplicate
   name: Replicate
-  description: Costs 20 resources. Hold still for 5 seconds to assemble a copy of yourself. It sleeps until another mind takes it over.
+  description: Costs 100 resources. Hold still for 5 seconds to assemble a copy of yourself. It sleeps until another mind takes it over.
   components:
   - type: Action
     useDelay: 1

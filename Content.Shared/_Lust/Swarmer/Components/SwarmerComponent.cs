@@ -38,6 +38,12 @@ public sealed partial class SwarmerComponent : Component
     public float BorgDrainPerHit = 0.2f;
 
     /// <summary>
+    /// Effect spawned on everything a swarmer hits.
+    /// </summary>
+    [DataField]
+    public EntProtoId HitEffect = "EffectSparks";
+
+    /// <summary>
     /// Body sprite state shown while the swarmer is moving.
     /// </summary>
     [DataField]
@@ -89,6 +95,12 @@ public sealed partial class SwarmerComponent : Component
     /// </summary>
     [DataField]
     public EntityWhitelist? IntegrateBlacklist;
+
+    /// <summary>
+    /// Items that can be integrated even though they list no materials, e.g. glass shards.
+    /// </summary>
+    [DataField]
+    public EntityWhitelist? IntegrateWhitelist;
 
     /// <summary>
     /// Effect spawned on an integrated item.
@@ -152,6 +164,12 @@ public sealed partial class SwarmerComponent : Component
     /// <summary>
     /// Walls, windows and doors can't be removed if pressure around them differs by more than this, in kPa.
     /// </summary>
+    /// <summary>
+    /// Extra loot left by disintegrated structures, e.g. airlocks leave steel.
+    /// </summary>
+    [DataField]
+    public List<SwarmerExtraLoot> ExtraLoot = [];
+
     [DataField]
     public float MaxPressureDelta = 250f;
 
@@ -265,6 +283,31 @@ public sealed partial class SwarmerComponent : Component
     public int TrapCost = 4;
 
     #endregion
+}
+
+/// <summary>
+/// Loot dropped when a swarmer disintegrates a matching structure.
+/// </summary>
+[DataDefinition]
+public sealed partial class SwarmerExtraLoot
+{
+    /// <summary>
+    /// Structures this loot comes from.
+    /// </summary>
+    [DataField(required: true)]
+    public EntityWhitelist Whitelist = new();
+
+    /// <summary>
+    /// Stack prototype that is spawned.
+    /// </summary>
+    [DataField(required: true)]
+    public EntProtoId Spawn;
+
+    /// <summary>
+    /// Stack size of the spawned loot.
+    /// </summary>
+    [DataField]
+    public int Amount = 1;
 }
 
 /// <summary>

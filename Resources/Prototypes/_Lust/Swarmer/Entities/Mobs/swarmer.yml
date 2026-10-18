@@ -14,6 +14,7 @@
   description: A small glowing machine that strips everything around it for parts and builds more of itself.
   components:
   - type: Swarmer
+    replicateCost: 100
     # С запасом над порогом гибели (40): модификаторы урона не должны спасать свармера от ЭМИ.
     empDamage:
       types:
@@ -25,6 +26,14 @@
     integrateBlacklist:
       components:
       - Gun
+      - Intellicard
+    # Осколки не описывают свой состав, поэтому разрешены отдельно.
+    integrateWhitelist:
+      tags:
+      - GlassShard
+      - ReinforcedGlassShard
+      - PlasmaGlassShard
+      - UraniumGlassShard
     # Стены оставляют балку и лист своего материала, балки разбираются на листы.
     # Столы оставляют каркас и материал столешницы, каркасы разбираются на стержни.
     # Стулья возвращают материалы, из которых построены.
@@ -35,11 +44,19 @@
     - Girder
     - Table
     - Seat
+    # Шлюзы, кроме самой разборки, оставляют сталь.
+    extraLoot:
+    - whitelist:
+        components:
+        - Airlock
+      spawn: SheetSteel1
+      amount: 5
     # Порядок важен: сообщение об отказе берётся из первой подошедшей записи.
     forbiddenTargets:
     - whitelist:
         components:
         - Nuke
+        - NukeLabel
       message: swarmer-forbidden-nuke
     - whitelist:
         components:
@@ -76,8 +93,16 @@
     - whitelist:
         components:
         - TelecomServer
-        - StationAiCore
       message: swarmer-forbidden-telecom
+    - whitelist:
+        components:
+        - StationAiCore
+        - StationAiHolder
+      message: swarmer-forbidden-ai
+    - whitelist:
+        components:
+        - GravityGenerator
+      message: swarmer-forbidden-gravity
     - whitelist:
         components:
         - ContainmentField
@@ -90,6 +115,12 @@
   - type: ComplexInteraction
   # Alt+клик по вентиляции (или ПКМ -> Enter Pipe Network), чтобы ползать по трубам.
   - type: VentCrawler
+  # Пустое тело без органов, как у боргов: вентиляция пускает в трубы только существ с телом.
+  - type: Body
+  # Кнопка «?» при осмотре открывает страницу гайдбука про Рой.
+  - type: GuideHelp
+    guides:
+    - Swarm
   - type: Sprite
     sprite: _Lust/Swarmer/Mobs/swarmer.rsi
     layers:
@@ -113,8 +144,8 @@
     energy: 1
     color: "#00FFFF"
   - type: MovementSpeedModifier
-    baseWalkSpeed: 3
-    baseSprintSpeed: 4.5
+    baseWalkSpeed: 3.75
+    baseSprintSpeed: 5.625
   - type: MobThresholds
     thresholds:
       0: Alive
@@ -171,7 +202,8 @@
     - ActionSwarmerToggleLight
     - ActionSwarmerTeleport
     - ActionSwarmerReplicate
-    - ActionSwarmerEscape
+    # Экстренный прыжок временно отключён: код и прототип способности на месте, чтобы вернуть — раскомментировать.
+    # - ActionSwarmerEscape
   # Дизейблер: ПКМ в боевом режиме. ЛКМ остаётся ударом по выносливости.
   - type: Gun
     useKey: false
@@ -186,18 +218,28 @@
     count: 1
   - type: RechargeBasicEntityAmmo
     rechargeCooldown: 2
-  - type: IntrinsicRadioReceiver
-  - type: IntrinsicRadioTransmitter
-    channels:
+  - type: CollectiveMind
+    minds:
     - Swarmer
-  - type: ActiveRadio
-    channels:
-    - Swarmer
+  - type: ReplacementAccent
+    accent: swarmer
+  # Без стандартного «бипа» борга: каждая фраза звучит своим звуком.
+  - type: Speech
+    speechVerb: Robotic
+    speechSounds: null
+  - type: SwarmerSpeechSounds
+    sounds:
+      swarmer-speech-buzz:
+        path: /Audio/_Lust/Swarmer/swarmer_weep.ogg
+      swarmer-speech-whoop:
+        path: /Audio/_Lust/Swarmer/swarmer_waap.ogg
+      swarmer-speech-beep:
+        path: /Audio/_Lust/Swarmer/swarmer_bep.ogg
   - type: GhostRole
     name: ghost-role-information-swarmer-name
     description: ghost-role-information-swarmer-description
     rules: ghost-role-information-swarmer-rules
     mindRoles:
-    - MindRoleGhostRoleTeamAntagonist
+    - MindRoleSwarm
   - type: GhostTakeoverAvailable
 
