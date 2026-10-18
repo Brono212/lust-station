@@ -109,7 +109,9 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
         else
         {
             // Предмет с содержимым (например, пачка сигарет) не уносит его с собой.
-            DropContents(target);
+            // Выбрасывает только сервер: при отклонённом предсказании вещи не мелькнут на полу у клиента.
+            if (_net.IsServer)
+                DropContents(target);
             PredictedQueueDel(target);
         }
 

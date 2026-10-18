@@ -33,7 +33,7 @@ public sealed partial class SwarmerSystem
     /// </summary>
     public bool TryStartReplicate(Entity<SwarmerComponent> ent)
     {
-        if (!HasResources(ent, ent.Comp.ReplicateCost))
+        if (!CanReplicate(ent))
             return false;
 
         var doAfter = new DoAfterArgs(EntityManager, ent, ent.Comp.ReplicateDelay, new SwarmerReplicateDoAfterEvent(), ent)
@@ -54,7 +54,7 @@ public sealed partial class SwarmerSystem
     /// </summary>
     public bool TryReplicate(Entity<SwarmerComponent> ent)
     {
-        if (!HasResources(ent, ent.Comp.ReplicateCost))
+        if (!CanReplicate(ent))
             return false;
 
         ent.Comp.Resources -= ent.Comp.ReplicateCost;
@@ -69,5 +69,13 @@ public sealed partial class SwarmerSystem
 
         PopupSelf(ent, Loc.GetString("swarmer-replicate-done"));
         return true;
+    }
+
+    /// <summary>
+    /// Whether the swarmer can pay for a copy. Checked again after the do-after, since resources may have been spent meanwhile.
+    /// </summary>
+    public bool CanReplicate(Entity<SwarmerComponent> ent, bool quiet = false)
+    {
+        return HasResources(ent, ent.Comp.ReplicateCost, quiet);
     }
 }
