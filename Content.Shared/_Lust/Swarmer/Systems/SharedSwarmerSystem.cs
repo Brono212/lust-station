@@ -11,6 +11,7 @@ using Content.Shared.Mobs.Components;
 using Content.Shared.Popups;
 using Content.Shared.Stacks;
 using Content.Shared.Whitelist;
+using Robust.Shared.Containers;
 
 namespace Content.Shared._Lust.Swarmer.Systems;
 
@@ -20,6 +21,7 @@ namespace Content.Shared._Lust.Swarmer.Systems;
 /// </summary>
 public abstract partial class SharedSwarmerSystem : EntitySystem
 {
+    [Dependency] protected SharedContainerSystem Container = default!;
     [Dependency] protected SharedDoAfterSystem DoAfter = default!;
     [Dependency] protected SharedMapSystem Map = default!;
     [Dependency] protected SharedPointLightSystem PointLight = default!;
@@ -30,6 +32,11 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
     [Dependency] private AlertsSystem _alerts = default!;
     [Dependency] private DamageableSystem _damageable = default!;
     [Dependency] private SharedStackSystem _stack = default!;
+
+    /// <summary>
+    /// Containers holding chemical solutions are internal bookkeeping, their contents must never be dropped.
+    /// </summary>
+    private const string SolutionContainerPrefix = "solution@";
 
     public override void Initialize()
     {
@@ -100,7 +107,11 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
         if (TryComp<StackComponent>(target, out var stack) && stack.Count > 1)
             _stack.TryUse((target, stack), 1);
         else
-            QueueDel(target);
+        {
+            // Предмет с содержимым (например, пачка сигарет) не уносит его с собой.
+            DropContents(target);
+            PredictedQueueDel(target);
+        }
 
         return true;
     }
@@ -110,14 +121,14 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
         if (!IsIntegrable(ent, target))
         {
             if (!quiet)
-                Popup.PopupEntity(Loc.GetString("swarmer-integrate-incompatible", ("target", target)), ent, ent);
+                Popup.PopupClient(Loc.GetString("swarmer-integrate-incompatible", ("target", target)), ent, ent);
             return false;
         }
 
         if (ent.Comp.Resources + ent.Comp.IntegrateGain > ent.Comp.MaxResources)
         {
             if (!quiet)
-                Popup.PopupEntity(Loc.GetString("swarmer-integrate-full"), ent, ent);
+                Popup.PopupClient(Loc.GetString("swarmer-integrate-full"), ent, ent);
             return false;
         }
 
@@ -169,5 +180,23 @@ public abstract partial class SharedSwarmerSystem : EntitySystem
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Drops everything stored inside (locker contents, machine boards and parts) instead of deleting it.
+    /// </summary>
+    protected void DropContents(EntityUid uid)
+    {
+        if (!TryComp<ContainerManagerComponent>(uid, out var manager))
+            return;
+
+        foreach (var container in Container.GetAllContainers(uid, manager))
+        {
+            var id = container.ID;
+            if (id.StartsWith(SolutionContainerPrefix))
+                continue;
+
+            Container.EmptyContainer(container, force: true);
+        }
     }
 }

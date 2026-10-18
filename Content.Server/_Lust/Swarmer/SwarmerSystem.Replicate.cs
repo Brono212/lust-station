@@ -33,7 +33,7 @@ public sealed partial class SwarmerSystem
     /// </summary>
     public bool TryStartReplicate(Entity<SwarmerComponent> ent)
     {
-        if (!CanAfford(ent, ent.Comp.ReplicateCost))
+        if (!HasResources(ent, ent.Comp.ReplicateCost))
             return false;
 
         var doAfter = new DoAfterArgs(EntityManager, ent, ent.Comp.ReplicateDelay, new SwarmerReplicateDoAfterEvent(), ent)
@@ -54,7 +54,7 @@ public sealed partial class SwarmerSystem
     /// </summary>
     public bool TryReplicate(Entity<SwarmerComponent> ent)
     {
-        if (!CanAfford(ent, ent.Comp.ReplicateCost))
+        if (!HasResources(ent, ent.Comp.ReplicateCost))
             return false;
 
         ent.Comp.Resources -= ent.Comp.ReplicateCost;

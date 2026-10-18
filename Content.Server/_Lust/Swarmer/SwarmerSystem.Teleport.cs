@@ -145,7 +145,7 @@ public sealed partial class SwarmerSystem
         if (HasComp<BeingVentCrawComponent>(ent))
             return false;
 
-        return CanAfford(ent, ent.Comp.EscapeCost, quiet);
+        return HasResources(ent, ent.Comp.EscapeCost, quiet);
     }
 
     private void RestrainVictim(Entity<SwarmerComponent> ent, EntityUid target)

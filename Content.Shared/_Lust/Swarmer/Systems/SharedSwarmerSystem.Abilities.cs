@@ -79,7 +79,7 @@ public abstract partial class SharedSwarmerSystem
 
         args.Handled = true;
         _damageable.ClearAllDamage(ent.Owner);
-        Popup.PopupEntity(Loc.GetString("swarmer-self-repair-done"), ent, ent);
+        Popup.PopupClient(Loc.GetString("swarmer-self-repair-done"), ent, ent);
     }
 
     private void OnToggleLightAction(Entity<SwarmerComponent> ent, ref SwarmerToggleLightActionEvent args)
@@ -180,7 +180,7 @@ public abstract partial class SharedSwarmerSystem
             || Turf.IsTileBlocked(tileRef, CollisionGroup.Impassable))
         {
             if (!quiet)
-                Popup.PopupEntity(Loc.GetString("swarmer-build-invalid-tile"), ent, ent);
+                Popup.PopupClient(Loc.GetString("swarmer-build-invalid-tile"), ent, ent);
             return false;
         }
 
@@ -188,7 +188,7 @@ public abstract partial class SharedSwarmerSystem
         if (_lookup.GetEntitiesInRange<SwarmerStructureComponent>(placement, StructureLookupRange).Count > 0)
         {
             if (!quiet)
-                Popup.PopupEntity(Loc.GetString("swarmer-build-occupied"), ent, ent);
+                Popup.PopupClient(Loc.GetString("swarmer-build-occupied"), ent, ent);
             return false;
         }
 
@@ -212,7 +212,7 @@ public abstract partial class SharedSwarmerSystem
         if (!DoAfter.TryStartDoAfter(doAfter))
             return false;
 
-        Popup.PopupEntity(Loc.GetString("swarmer-self-repair-start"), ent, ent);
+        Popup.PopupClient(Loc.GetString("swarmer-self-repair-start"), ent, ent);
         return true;
     }
 
@@ -225,7 +225,7 @@ public abstract partial class SharedSwarmerSystem
             && !_damageable.TryGetDamageGreaterThan((ent, damageable), FixedPoint2.Zero, out _))
         {
             if (!quiet)
-                Popup.PopupEntity(Loc.GetString("swarmer-self-repair-intact"), ent, ent);
+                Popup.PopupClient(Loc.GetString("swarmer-self-repair-intact"), ent, ent);
             return false;
         }
 
@@ -253,7 +253,7 @@ public abstract partial class SharedSwarmerSystem
             return true;
 
         if (!quiet)
-            Popup.PopupEntity(Loc.GetString("swarmer-build-no-resources", ("cost", cost)), ent, ent);
+            Popup.PopupClient(Loc.GetString("swarmer-build-no-resources", ("cost", cost)), ent, ent);
         return false;
     }
 

@@ -37,6 +37,7 @@ public sealed class SwarmerTest : GameTest
             entMan.System<SharedEmpSystem>().DoEmpEffects(swarmer, 50000, TimeSpan.FromSeconds(10));
         });
 
+        // Несколько тиков, чтобы отработали отложенное удаление (QueueDel) и спавн лута/эффектов.
         await server.WaitRunTicks(5);
 
         await server.WaitAssertion(() =>
@@ -85,6 +86,7 @@ public sealed class SwarmerTest : GameTest
             interaction.InteractHand(swarmer, banana);
         });
 
+        // Несколько тиков, чтобы отработали отложенное удаление (QueueDel) и спавн лута/эффектов.
         await server.WaitRunTicks(5);
 
         await server.WaitAssertion(() =>
@@ -114,6 +116,7 @@ public sealed class SwarmerTest : GameTest
 
         EntityUid swarmer = default;
         EntityUid target = default;
+        var inserted = true;
 
         await server.WaitPost(() =>
         {
@@ -129,11 +132,13 @@ public sealed class SwarmerTest : GameTest
             {
                 var content = entMan.SpawnAtPosition(inside, targetCoords);
                 var storage = entMan.System<Content.Shared.Storage.EntitySystems.SharedEntityStorageSystem>();
-                Assert.That(storage.Insert(content, target), Is.True, $"Failed to put {inside} into {targetProto}");
+                inserted = storage.Insert(content, target);
             }
 
             entMan.System<SharedInteractionSystem>().InteractHand(swarmer, target);
         });
+
+        Assert.That(inserted, Is.True, $"Failed to put {inside} into {targetProto}");
 
         await RunSeconds(seconds);
 
@@ -351,6 +356,8 @@ public sealed class SwarmerTest : GameTest
         var battery = entMan.System<Content.Shared.Power.EntitySystems.SharedBatterySystem>();
         EntityUid borg = default;
         float maxCharge = 0;
+        var drained = false;
+        float chargeAfterHit = 0;
 
         await server.WaitPost(() =>
         {
@@ -359,12 +366,12 @@ public sealed class SwarmerTest : GameTest
             entMan.Dirty(testMap.Grid, gravity);
 
             borg = entMan.SpawnAtPosition("PlayerBorgBattery", new EntityCoordinates(testMap.Grid, 2.5f, 0.5f));
-            Assert.That(powerCell.TryGetBatteryFromSlot(borg, out var cell));
+            powerCell.TryGetBatteryFromSlot(borg, out var cell);
             maxCharge = cell!.Value.Comp.MaxCharge;
 
-            // Удар свармера отнимает долю заряда.
-            Assert.That(swarmerSystem.TryDrainBorg(borg, 0.2f));
-            Assert.That(battery.GetCharge(cell.Value.AsNullable()), Is.EqualTo(maxCharge * 0.8f).Within(0.01f));
+            // Удар роевика отнимает долю заряда.
+            drained = swarmerSystem.TryDrainBorg(borg, 0.2f);
+            chargeAfterHit = battery.GetCharge(cell.Value.AsNullable());
             battery.SetCharge(cell.Value.AsNullable(), maxCharge);
 
             entMan.SpawnAtPosition("SwarmerTrap", new EntityCoordinates(testMap.Grid, 0.5f, 0.5f));
@@ -375,6 +382,8 @@ public sealed class SwarmerTest : GameTest
 
         await server.WaitAssertion(() =>
         {
+            Assert.That(drained);
+            Assert.That(chargeAfterHit, Is.EqualTo(maxCharge * 0.8f).Within(0.01f));
             Assert.That(powerCell.TryGetBatteryFromSlot(borg, out var cell));
             Assert.That(battery.GetCharge(cell!.Value.AsNullable()), Is.EqualTo(maxCharge * 0.5f).Within(maxCharge * 0.02f));
             Assert.That(entMan.HasComponent<Content.Shared.Stunnable.StunnedComponent>(borg));
@@ -549,10 +558,17 @@ public sealed class SwarmerTest : GameTest
         var testMap = await Pair.CreateTestMap();
         var entMan = server.ResolveDependency<IEntityManager>();
         var loc = server.ResolveDependency<Robust.Shared.Localization.ILocalizationManager>();
+        EntityUid swarmer = default;
+        var spoken = string.Empty;
+
+        await server.WaitPost(() =>
+        {
+            swarmer = entMan.SpawnAtPosition("MobSwarmer", new EntityCoordinates(testMap.Grid, 0.5f, 0.5f));
+            spoken = entMan.System<Content.Server.Chat.Systems.ChatSystem>().TransformSpeech(swarmer, "Отдайте нам станцию.");
+        });
 
         await server.WaitAssertion(() =>
         {
-            var swarmer = entMan.SpawnAtPosition("MobSwarmer", new EntityCoordinates(testMap.Grid, 0.5f, 0.5f));
             var phrases = new[] { "swarmer-speech-buzz", "swarmer-speech-whoop", "swarmer-speech-beep" }
                 .Select(id => loc.GetString(id))
                 .ToList();
@@ -560,7 +576,6 @@ public sealed class SwarmerTest : GameTest
             Assert.Multiple(() =>
             {
                 // Вслух любая фраза превращается в один из звуков, а связь роя идёт через коллективный разум.
-                var spoken = entMan.System<Content.Server.Chat.Systems.ChatSystem>().TransformSpeech(swarmer, "Отдайте нам станцию.");
                 Assert.That(phrases, Does.Contain(spoken));
                 Assert.That(entMan.GetComponent<Content.Shared._Sunrise.CollectiveMind.CollectiveMindComponent>(swarmer).Minds, Does.Contain("Swarmer"));
                 Assert.That(entMan.GetComponent<Content.Shared.Speech.SpeechComponent>(swarmer).SpeechSounds, Is.Null);
@@ -574,16 +589,21 @@ public sealed class SwarmerTest : GameTest
         var server = Pair.Server;
         var testMap = await Pair.CreateTestMap();
         var entMan = server.ResolveDependency<IEntityManager>();
+        var inserted = false;
 
-        await server.WaitAssertion(() =>
+        await server.WaitPost(() =>
         {
             var coords = new EntityCoordinates(testMap.Grid, 0.5f, 0.5f);
             var swarmer = entMan.SpawnAtPosition("MobSwarmer", coords);
             var holder = entMan.SpawnAtPosition(Content.Shared._Sunrise.VentCraw.Components.VentCrawEntryComponent.HolderPrototypeId, coords);
             var holderComp = entMan.GetComponent<Content.Shared._Sunrise.VentCraw.Components.VentCrawHolderComponent>(holder);
+            inserted = entMan.System<Content.Server._Sunrise.VentCraw.VentCrawTubeSystem>().TryInsert(holder, swarmer, holderComp);
+        });
 
-            // Вентиляция пускает только существ с телом, поэтому у свармера пустое тело, как у боргов.
-            Assert.That(entMan.System<Content.Server._Sunrise.VentCraw.VentCrawTubeSystem>().TryInsert(holder, swarmer, holderComp));
+        await server.WaitAssertion(() =>
+        {
+            // Вентиляция пускает только существ с телом, поэтому у роевика пустое тело, как у боргов.
+            Assert.That(inserted);
         });
     }
 
@@ -647,6 +667,7 @@ public sealed class SwarmerTest : GameTest
             entMan.System<SharedInteractionSystem>().InteractHand(swarmer, shard);
         });
 
+        // Несколько тиков, чтобы отработали отложенное удаление (QueueDel) и спавн лута/эффектов.
         await server.WaitRunTicks(5);
 
         await server.WaitAssertion(() =>
@@ -654,6 +675,36 @@ public sealed class SwarmerTest : GameTest
             // У осколков нет состава материалов, они разрешены отдельным списком.
             Assert.That(entMan.Deleted(shard), Is.True);
             Assert.That(entMan.GetComponent<SwarmerComponent>(swarmer).Resources, Is.EqualTo(21));
+        });
+    }
+
+    [Test]
+    public async Task IntegratedPackDropsItsContents()
+    {
+        var server = Pair.Server;
+        var testMap = await Pair.CreateTestMap();
+        var entMan = server.ResolveDependency<IEntityManager>();
+        EntityUid pack = default;
+
+        await server.WaitPost(() =>
+        {
+            var swarmer = entMan.SpawnAtPosition("MobSwarmer", testMap.GridCoords);
+            pack = entMan.SpawnAtPosition("CigPackGreen", testMap.GridCoords);
+            entMan.System<SharedInteractionSystem>().InteractHand(swarmer, pack);
+        });
+
+        // Несколько тиков, чтобы отработали отложенное удаление (QueueDel) и выпадение содержимого.
+        await server.WaitRunTicks(5);
+
+        await server.WaitAssertion(() =>
+        {
+            var leftovers = entMan.System<EntityLookupSystem>()
+                .GetEntitiesInRange(testMap.GridCoords, 2, LookupFlags.All | LookupFlags.Approximate)
+                .Count(e => entMan.GetComponent<MetaDataComponent>(e).EntityPrototype?.ID?.StartsWith("Cigarette") == true);
+
+            // Пачка съедена, но сигареты из неё не пропали, а выпали на пол.
+            Assert.That(entMan.Deleted(pack), Is.True);
+            Assert.That(leftovers, Is.GreaterThan(0));
         });
     }
 

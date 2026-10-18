@@ -162,14 +162,14 @@ public sealed partial class SwarmerComponent : Component
     public List<ProtoId<ConstructionGraphPrototype>> SalvageGraphs = [];
 
     /// <summary>
-    /// Walls, windows and doors can't be removed if pressure around them differs by more than this, in kPa.
-    /// </summary>
-    /// <summary>
     /// Extra loot left by disintegrated structures, e.g. airlocks leave steel.
     /// </summary>
     [DataField]
     public List<SwarmerExtraLoot> ExtraLoot = [];
 
+    /// <summary>
+    /// Walls, windows and doors can't be removed if pressure around them differs by more than this, in kPa.
+    /// </summary>
     [DataField]
     public float MaxPressureDelta = 250f;
 

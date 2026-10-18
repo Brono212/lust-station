@@ -26,15 +26,9 @@ namespace Content.Server._Lust.Swarmer;
 public sealed partial class SwarmerSystem : SharedSwarmerSystem
 {
     [Dependency] private AtmosphereSystem _atmos = default!;
-    [Dependency] private SharedContainerSystem _container = default!;
     [Dependency] private DestructibleSystem _destructible = default!;
     [Dependency] private IPrototypeManager _proto = default!;
     [Dependency] private StackSystem _stack = default!;
-
-    /// <summary>
-    /// Containers holding chemical solutions are internal bookkeeping, their contents must never be dropped.
-    /// </summary>
-    private const string SolutionContainerPrefix = "solution@";
 
     public override void Initialize()
     {
@@ -346,7 +340,7 @@ public sealed partial class SwarmerSystem : SharedSwarmerSystem
         if (!TryComp<ContainerManagerComponent>(uid, out var manager))
             return false;
 
-        foreach (var container in _container.GetAllContainers(uid, manager))
+        foreach (var container in Container.GetAllContainers(uid, manager))
         {
             foreach (var contained in container.ContainedEntities)
             {
@@ -359,21 +353,17 @@ public sealed partial class SwarmerSystem : SharedSwarmerSystem
     }
 
     /// <summary>
-    /// Drops everything stored inside (locker contents, machine boards and parts) instead of deleting it.
+    /// Resource check for actions only the server handles (replication, the emergency jump).
+    /// The shared check shows its popup through prediction, which never runs for these actions.
     /// </summary>
-    private void DropContents(EntityUid uid)
+    private bool HasResources(Entity<SwarmerComponent> ent, int cost, bool quiet = false)
     {
-        if (!TryComp<ContainerManagerComponent>(uid, out var manager))
-            return;
+        if (CanAfford(ent, cost, quiet: true))
+            return true;
 
-        foreach (var container in _container.GetAllContainers(uid, manager))
-        {
-            var id = container.ID;
-            if (id.StartsWith(SolutionContainerPrefix))
-                continue;
-
-            _container.EmptyContainer(container, force: true);
-        }
+        if (!quiet)
+            PopupSelf(ent, Loc.GetString("swarmer-build-no-resources", ("cost", cost)));
+        return false;
     }
 
     /// <summary>
